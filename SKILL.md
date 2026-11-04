@@ -56,14 +56,17 @@ launchd does not start a second run of a job while the first is still running, s
 
 ## Update
 
-Releases are git tags (`v0.1.0`, `v0.2.0`, ...). Install only tagged releases, never `main`. When the user asks you to update the poller, do these steps:
+Releases are git tags (`v0.1.0`, `v0.2.0`, ...). Install only tagged releases, never `main`. From `v0.2.0` on, each pass of the poller fetches tags and switches to the newest `v*` tag on its own, so script fixes apply without the user doing anything. If a new release changes `SKILL.md`, the log says `changes install steps; ask your agent to update the review poller`. If local edits block the switch, the log says `could not check out`. The steps below are for those cases, for a first move to `v0.2.0`, and for rollback.
+
+When the user asks you to update the poller, do these steps:
 
 - **Find versions.** Run `git -C ~/.local/share/review-poller fetch --tags`. The current version is `git -C ~/.local/share/review-poller describe --tags`. The newest is `git -C ~/.local/share/review-poller tag --sort=-v:refname | head -1`. If they match, tell the user they are up to date and stop.
 - **Show changes.** Show the user the newest tag's message (`git -C ~/.local/share/review-poller tag -l --format='%(contents)' <new>`) and the files that changed (`git -C ~/.local/share/review-poller diff --stat <current> <new>`). Ask before you continue.
 - **Check out.** Run `git -C ~/.local/share/review-poller checkout <new>`. If git refuses because of local changes, show them to the user and stop. Do not discard them.
 - **Apply.** If only `review-poller.sh` changed, you are done: launchd reads the script fresh on each run. If `SKILL.md` changed, read it again and redo **Write plist**, **Load**, and **Tell the agent** from Install. Keep the user's agent command, `PATH`, and interval from the current plist; ask only about new settings.
 - **Check pr-review.** If the tag message says it needs a newer autopraxis, reinstall the `pr-review` skill with the matching `npx @zhachory1/autopraxis@latest install --target <target> --force` command.
-- **Verify.** Check `~/Library/Logs/pr-review-poller.log` after the next run. To roll back, check out the previous tag and redo **Apply**.
+- **Verify.** Check `~/Library/Logs/pr-review-poller.log` after the next run.
+- **Roll back or pin.** Auto-update moves back to the newest tag on the next pass. To stay on an older tag, add `PR_REVIEW_UPDATED=1` to the plist `EnvironmentVariables`, check out the tag, and redo **Load**. Remove the variable to resume auto-update.
 
 ## Uninstall
 
