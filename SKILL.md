@@ -14,22 +14,22 @@ Install only on macOS. When the user asks you to install the poller, do these st
 - **Check auth.** Confirm `gh auth status` succeeds and `jq` is installed. Reviews post as this GitHub account.
 - **Agent command.** Ask the user for their agent command. It must run non-interactively, take the prompt as its last argument, and have permission to run `gh`, for example `claude -p --permission-mode acceptEdits --allowedTools "Bash(gh:*)"`. Use exactly what the user gives you; do not guess.
 - **Interval.** Ask how often to poll (default 600 seconds).
-- **Write plist.** Write `~/Library/LaunchAgents/com.autopraxis.pr-review-poller.plist` with this template. Fill in the absolute path of `~/.local/share/review-poller/review-poller.sh`, the agent command, and a `PATH` that contains `gh`, `jq`, and the agent CLI (`dirname "$(command -v gh)"`, etc.). XML-escape the values (`&` → `&amp;`, `<` → `&lt;`, `"` → `&quot;`). Set `StartInterval` to the chosen interval.
+- **Write plist.** Write `~/Library/LaunchAgents/com.autopraxis.pr-review-poller.plist` with this template. Replace each placeholder: `__POLLER_PATH__` with the absolute path of `~/.local/share/review-poller/review-poller.sh`, `__AGENT_CMD__` with the agent command, `__TOOL_PATH__` with the directories that contain `gh`, `jq`, and the agent CLI (`dirname "$(command -v gh)"`, etc.), and `__HOME__` with the user's home directory. Replace only the placeholders; do not change key names such as `PR_REVIEW_AGENT_CMD`. Afterwards no `__` placeholder may remain. XML-escape the values (`&` → `&amp;`, `<` → `&lt;`, `"` → `&quot;`). Set `StartInterval` to the chosen interval.
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
   <key>Label</key><string>com.autopraxis.pr-review-poller</string>
-  <key>ProgramArguments</key><array><string>/bin/bash</string><string>POLLER_PATH</string></array>
+  <key>ProgramArguments</key><array><string>/bin/bash</string><string>__POLLER_PATH__</string></array>
   <key>EnvironmentVariables</key><dict>
-    <key>PATH</key><string>TOOL_PATH:/usr/bin:/bin</string>
-    <key>PR_REVIEW_AGENT_CMD</key><string>AGENT_CMD</string>
+    <key>PATH</key><string>__TOOL_PATH__:/usr/bin:/bin</string>
+    <key>PR_REVIEW_AGENT_CMD</key><string>__AGENT_CMD__</string>
   </dict>
   <key>StartInterval</key><integer>600</integer>
   <key>RunAtLoad</key><true/>
-  <key>StandardOutPath</key><string>HOME/Library/Logs/pr-review-poller.log</string>
-  <key>StandardErrorPath</key><string>HOME/Library/Logs/pr-review-poller.log</string>
+  <key>StandardOutPath</key><string>__HOME__/Library/Logs/pr-review-poller.log</string>
+  <key>StandardErrorPath</key><string>__HOME__/Library/Logs/pr-review-poller.log</string>
 </dict></plist>
 ```
 
@@ -75,7 +75,7 @@ When the user asks you to stop, remove, or uninstall the poller, or says it is b
 - **Unload.** Run `launchctl bootout gui/$(id -u)/com.autopraxis.pr-review-poller`. This also stops a review that is running now. If it fails with `3: No such process`, the job is already unloaded; continue.
 - **Remove plist.** Delete `~/Library/LaunchAgents/com.autopraxis.pr-review-poller.plist`, so the job does not load again at the next login.
 - **Verify.** `launchctl print gui/$(id -u)/com.autopraxis.pr-review-poller` must fail. If it still succeeds, report this to the user and stop.
-- **Remove context.** Delete the lines from `<!-- review-poller:start -->` to `<!-- review-poller:end -->`, markers included, from the agent instructions file you wrote at install (`~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md`, or `~/AGENTS.md`). Do not change other text in that file.
+- **Remove context.** Delete the review-poller block that **Tell the agent** added (its start marker, end marker, and every line between them) from the agent instructions file you wrote at install (`~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md`, or `~/AGENTS.md`). Do not change other text in that file.
 - **Ask before you delete data.** If the poller is broken, show the user the last 50 lines of `~/Library/Logs/pr-review-poller.log` first. Then ask if they also want to delete the log, the seen file `~/.local/state/autopraxis/pr-review-seen`, and the clone `~/.local/share/review-poller`. Delete only what they approve. A later reinstall skips SHAs already reviewed on GitHub either way; the seen file only saves API calls.
 
 Reviews that are already posted stay on GitHub. Uninstall does not remove the `pr-review` skill or autopraxis.
