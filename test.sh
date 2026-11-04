@@ -1,9 +1,11 @@
 #!/bin/bash
-# Fake gh + fake agent; checks one review per head SHA, skips drafts/self-authored PRs, retries failures.
+# Fake gh + fake agent; checks one review per head SHA, skips drafts/self-authored PRs and SHAs already reviewed on GitHub, retries failures.
 set -euo pipefail
 cd "$(dirname "$0")"
 tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
 echo aaa > "$tmp/sha"
+# Reviews by someone else, or by me at an older SHA, must not count.
+echo '[{"id":1,"user":{"login":"bob"},"commit_id":"aaa"},{"id":2,"user":{"login":"me"},"commit_id":"old"}]' > "$tmp/reviews"
 cat > "$tmp/gh" <<FAKE
 #!/bin/bash
 jqf=""; prev=""; for a in "\$@"; do [ "\$prev" = "--jq" ] && jqf="\$a"; prev="\$a"; done
@@ -11,6 +13,7 @@ case "\$1 \$2" in
   "api user") json='{"login":"me"}' ;;
   "search prs") json='[{"repository":{"nameWithOwner":"o/r"},"number":1,"url":"https://github.com/o/r/pull/1","isDraft":false,"author":{"login":"bob"}},{"repository":{"nameWithOwner":"o/r"},"number":2,"url":"u2","isDraft":true,"author":{"login":"bob"}},{"repository":{"nameWithOwner":"o/r"},"number":3,"url":"u3","isDraft":false,"author":{"login":"me"}}]' ;;
   "pr view") json="{\"headRefOid\":\"\$(cat $tmp/sha)\"}" ;;
+  "api repos/o/r/pulls/1/reviews") json="\$(cat $tmp/reviews)" ;;
 esac
 printf '%s' "\$json" | jq -r "\$jqf"
 FAKE
@@ -28,4 +31,10 @@ grep -q "head SHA bbb" "$tmp/agent.log" || fail "wrong prompt for new SHA"
 
 echo ccc > "$tmp/sha"; PR_REVIEW_AGENT_CMD=false ./review-poller.sh >/dev/null 2>&1
 grep -q ccc "$tmp/state/pr-review-seen" && fail "failed review marked seen"
+
+echo ddd > "$tmp/sha"
+echo '[{"id":3,"user":{"login":"me"},"commit_id":"ddd"}]' > "$tmp/reviews"
+./review-poller.sh >/dev/null
+[ "$(wc -l < "$tmp/agent.log")" -eq 2 ] || fail "SHA already reviewed on GitHub was reviewed again"
+grep -Fxq 'o/r#1@ddd' "$tmp/state/pr-review-seen" || fail "SHA reviewed on GitHub not recorded as seen"
 echo "ok"

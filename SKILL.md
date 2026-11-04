@@ -5,7 +5,7 @@ description: "Install, update, or remove a macOS launchd poller that runs the au
 
 # Review Poller
 
-`review-poller.sh` runs one pass. For each open, non-draft PR assigned to the `gh` user, excluding PRs the user authored, it runs the `pr-review` skill once per head SHA. A new push gets a new review. A failed run is retried on the next pass. Reviewed keys (`repo#pr@sha`) live in `~/.local/state/autopraxis/pr-review-seen`. The `pr-review` idempotency marker also stops duplicate posts on GitHub.
+`review-poller.sh` runs one pass. For each open, non-draft PR assigned to the `gh` user, excluding PRs the user authored, it runs the `pr-review` skill once per head SHA. A new push gets a new review. A failed run is retried on the next pass. Before each run it asks GitHub whether the user already has a review on that PR at that exact SHA, and skips if so. This covers reviews made by hand, from another machine, or by a run that posted and then exited with an error. Reviewed keys (`repo#pr@sha`) are cached in `~/.local/state/autopraxis/pr-review-seen` to save API calls.
 
 Install only on macOS. When the user asks you to install the poller, do these steps:
 
@@ -45,12 +45,12 @@ A launchd job (`com.autopraxis.pr-review-poller`) runs on this Mac. It runs the 
 - Do not review those PRs again by hand unless I ask. The poller does it after each push.
 - This rule does not apply to a run that the poller starts. Its prompt asks for a review at a specific head SHA; do that review.
 - Log: `~/Library/Logs/pr-review-poller.log`. Reviewed SHAs: `~/.local/state/autopraxis/pr-review-seen`.
-- To re-review a SHA, delete its line from the seen file.
+- The poller skips any SHA I already reviewed on GitHub. To get a new automatic review, push a new commit, or ask you to run `pr-review` by hand.
 - To stop, update, or debug the poller, follow `~/.local/share/review-poller/SKILL.md`.
 <!-- review-poller:end -->
 ```
 
-- **Reset.** To review a SHA again, delete its line from the seen file.
+- **Re-review.** The poller never reviews a SHA again once the user has a review on it in GitHub. To review it again, run `pr-review` by hand or push a new commit.
 
 launchd does not start a second run of a job while the first is still running, so the poller needs no lock. The first pass reviews every assigned PR, so tell the user how many are open before you load the plist.
 
@@ -62,6 +62,6 @@ When the user asks you to stop, remove, or uninstall the poller, or says it is b
 - **Remove plist.** Delete `~/Library/LaunchAgents/com.autopraxis.pr-review-poller.plist`, so the job does not load again at the next login.
 - **Verify.** `launchctl print gui/$(id -u)/com.autopraxis.pr-review-poller` must fail. If it still succeeds, report this to the user and stop.
 - **Remove context.** Delete the lines from `<!-- review-poller:start -->` to `<!-- review-poller:end -->`, markers included, from the agent instructions file you wrote at install (`~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md`, or `~/AGENTS.md`). Do not change other text in that file.
-- **Ask before you delete data.** If the poller is broken, show the user the last 50 lines of `~/Library/Logs/pr-review-poller.log` first. Then ask if they also want to delete the log, the seen file `~/.local/state/autopraxis/pr-review-seen`, and the clone `~/.local/share/review-poller`. Delete only what they approve. If they keep the seen file, a later reinstall does not review the same SHAs again.
+- **Ask before you delete data.** If the poller is broken, show the user the last 50 lines of `~/Library/Logs/pr-review-poller.log` first. Then ask if they also want to delete the log, the seen file `~/.local/state/autopraxis/pr-review-seen`, and the clone `~/.local/share/review-poller`. Delete only what they approve. A later reinstall skips SHAs already reviewed on GitHub either way; the seen file only saves API calls.
 
 Reviews that are already posted stay on GitHub. Uninstall does not remove the `pr-review` skill or autopraxis.

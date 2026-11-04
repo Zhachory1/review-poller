@@ -19,6 +19,10 @@ while IFS=$'\t' read -r repo number url; do
   sha="$(gh pr view "$number" -R "$repo" --json headRefOid --jq .headRefOid)"
   key="$repo#$number@$sha"
   if grep -Fxq "$key" "$SEEN"; then continue; fi
+  # GitHub is the source of truth: skip if this user already reviewed this exact SHA (by hand, another machine, or a run that posted then failed).
+  reviewed="$(gh api "repos/$repo/pulls/$number/reviews" --paginate \
+    --jq ".[] | select(.user.login == \"$me\" and .commit_id == \"$sha\") | .id")"
+  if [ -n "$reviewed" ]; then echo "$key" >> "$SEEN"; continue; fi
   echo "$(date -u +%FT%TZ) reviewing $key"
   prompt="Use the pr-review skill to review $url at head SHA $sha. Post the review per the skill's delivery contract."
   if /bin/bash -c "$PR_REVIEW_AGENT_CMD \"\$1\"" pr-review-poller "$prompt" </dev/null; then

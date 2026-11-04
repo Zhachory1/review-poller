@@ -16,5 +16,5 @@ Reviews post under your own GitHub account and can `APPROVE` or `REQUEST_CHANGES
 
 - Logs: `~/Library/Logs/pr-review-poller.log`
 - Stop or uninstall: ask your agent to "uninstall the review poller". It follows the Uninstall section of `SKILL.md`.
-- Re-review a SHA: delete its line from `~/.local/state/autopraxis/pr-review-seen`
+- Re-review a SHA: the poller skips any SHA you already reviewed on GitHub, so push a new commit or ask your agent to run `pr-review` by hand.
 - Test: `./test.sh` (needs `jq`)
