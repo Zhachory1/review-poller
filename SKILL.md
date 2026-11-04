@@ -34,6 +34,22 @@ Install only on macOS. When the user asks you to install the poller, do these st
 ```
 
 - **Load.** Run `plutil -lint` on the plist, then `launchctl bootstrap gui/$(id -u) <plist>`. If the job is already loaded (update), run `launchctl bootout gui/$(id -u)/com.autopraxis.pr-review-poller` first. Check `~/Library/Logs/pr-review-poller.log` after the first run.
+- **Tell the agent.** Add the block below to the user's global agent instructions so their interactive agent knows the poller exists. Use the file that the user's agent reads: `~/.claude/CLAUDE.md` for Claude Code, `~/.codex/AGENTS.md` for Codex, otherwise `~/AGENTS.md`. If you are not sure, ask. Create the file if it does not exist. If the markers already exist, replace the text between them; do not add a second block. Show the user the file path and the block before you write.
+
+```markdown
+<!-- review-poller:start -->
+## Local PR review poller
+
+A launchd job (`com.autopraxis.pr-review-poller`) runs on this Mac. It runs the `pr-review` skill on each open, non-draft PR assigned to me, once per head SHA, and posts the review as me.
+
+- Do not review those PRs again by hand unless I ask. The poller does it after each push.
+- This rule does not apply to a run that the poller starts. Its prompt asks for a review at a specific head SHA; do that review.
+- Log: `~/Library/Logs/pr-review-poller.log`. Reviewed SHAs: `~/.local/state/autopraxis/pr-review-seen`.
+- To re-review a SHA, delete its line from the seen file.
+- To stop, update, or debug the poller, follow `~/.local/share/review-poller/SKILL.md`.
+<!-- review-poller:end -->
+```
+
 - **Reset.** To review a SHA again, delete its line from the seen file.
 
 launchd does not start a second run of a job while the first is still running, so the poller needs no lock. The first pass reviews every assigned PR, so tell the user how many are open before you load the plist.
@@ -45,6 +61,7 @@ When the user asks you to stop, remove, or uninstall the poller, or says it is b
 - **Unload.** Run `launchctl bootout gui/$(id -u)/com.autopraxis.pr-review-poller`. This also stops a review that is running now. If it fails with `3: No such process`, the job is already unloaded; continue.
 - **Remove plist.** Delete `~/Library/LaunchAgents/com.autopraxis.pr-review-poller.plist`, so the job does not load again at the next login.
 - **Verify.** `launchctl print gui/$(id -u)/com.autopraxis.pr-review-poller` must fail. If it still succeeds, report this to the user and stop.
+- **Remove context.** Delete the lines from `<!-- review-poller:start -->` to `<!-- review-poller:end -->`, markers included, from the agent instructions file you wrote at install (`~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md`, or `~/AGENTS.md`). Do not change other text in that file.
 - **Ask before you delete data.** If the poller is broken, show the user the last 50 lines of `~/Library/Logs/pr-review-poller.log` first. Then ask if they also want to delete the log, the seen file `~/.local/state/autopraxis/pr-review-seen`, and the clone `~/.local/share/review-poller`. Delete only what they approve. If they keep the seen file, a later reinstall does not review the same SHAs again.
 
 Reviews that are already posted stay on GitHub. Uninstall does not remove the `pr-review` skill or autopraxis.

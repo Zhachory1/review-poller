@@ -8,7 +8,7 @@ Ask your coding agent:
 
 > Install the review poller from https://github.com/Zhachory1/review-poller by following its SKILL.md.
 
-The agent clones this repo to `~/.local/share/review-poller`, checks `gh`, `jq`, and `pr-review`, asks you for your agent command and poll interval, and loads a LaunchAgent.
+The agent clones this repo to `~/.local/share/review-poller`, checks `gh`, `jq`, and `pr-review`, asks you for your agent command and poll interval, loads a LaunchAgent, and adds a short note to your global agent instructions (`~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md`, or `~/AGENTS.md`) so your agent knows the poller is running. Uninstall removes the note.
 
 Reviews post under your own GitHub account and can `APPROVE` or `REQUEST_CHANGES`. The poller never merges.
 
