@@ -4,6 +4,29 @@
 # interval and never overlaps runs of the same job.
 set -euo pipefail
 
+# Self-update to the newest v* tag, then re-exec so the pass runs one version end to end.
+# Keep this block first and stable: a release that breaks it cannot update its way out.
+dir="$(cd "$(dirname "$0")" && pwd)"
+if [ -z "${PR_REVIEW_UPDATED:-}" ] && git -C "$dir" rev-parse --git-dir >/dev/null 2>&1; then
+  export PR_REVIEW_UPDATED=1
+  if git -C "$dir" fetch -q --tags 2>/dev/null; then
+    cur="$(git -C "$dir" describe --tags --exact-match 2>/dev/null || true)"
+    latest="$(git -C "$dir" tag -l 'v*' --sort=-v:refname | head -1)"
+    if [ -n "$latest" ] && [ "$cur" != "$latest" ]; then
+      if git -C "$dir" -c advice.detachedHead=false checkout -q "$latest" 2>/dev/null; then
+        echo "$(date -u +%FT%TZ) updated ${cur:-untagged} -> $latest"
+        if [ -n "$cur" ] && ! git -C "$dir" diff --quiet "$cur" "$latest" -- SKILL.md; then
+          echo "$(date -u +%FT%TZ) $latest changes install steps; ask your agent to update the review poller" >&2
+        fi
+        exec /bin/bash "$dir/review-poller.sh" "$@"
+      fi
+      echo "$(date -u +%FT%TZ) could not check out $latest (local changes?); staying on ${cur:-current}" >&2
+    fi
+  else
+    echo "$(date -u +%FT%TZ) tag fetch failed; staying on current version" >&2
+  fi
+fi
+
 : "${PR_REVIEW_AGENT_CMD:?set PR_REVIEW_AGENT_CMD to a non-interactive agent command that takes the prompt as its last argument}"
 STATE_DIR="${PR_REVIEW_STATE_DIR:-$HOME/.local/state/autopraxis}"
 SEEN="$STATE_DIR/pr-review-seen"
