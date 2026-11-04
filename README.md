@@ -15,6 +15,6 @@ Reviews post under your own GitHub account and can `APPROVE` or `REQUEST_CHANGES
 ## Operate
 
 - Logs: `~/Library/Logs/pr-review-poller.log`
-- Stop: `launchctl bootout gui/$(id -u)/com.autopraxis.pr-review-poller`
+- Stop or uninstall: ask your agent to "uninstall the review poller". It follows the Uninstall section of `SKILL.md`.
 - Re-review a SHA: delete its line from `~/.local/state/autopraxis/pr-review-seen`
 - Test: `./test.sh` (needs `jq`)
