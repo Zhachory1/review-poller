@@ -15,6 +15,19 @@ Reviews post under your own GitHub account and can `APPROVE` or `REQUEST_CHANGES
 ## Operate
 
 - Logs: `~/Library/Logs/pr-review-poller.log`
+- Update: ask your agent to "update the review poller". It moves to the newest release tag and shows you what changed first.
 - Stop or uninstall: ask your agent to "uninstall the review poller". It follows the Uninstall section of `SKILL.md`.
 - Re-review a SHA: the poller skips any SHA you already reviewed on GitHub, so push a new commit or ask your agent to run `pr-review` by hand.
 - Test: `./test.sh` (needs `jq`)
+
+## Release (maintainer)
+
+Teammates install tagged releases only, so changes on `main` reach nobody until you tag them.
+
+```bash
+./test.sh
+git tag -a v0.2.0 -m "What changed and whether users must redo any install step"
+git push origin v0.2.0
+```
+
+Then tell testers to ask their agent to "update the review poller".

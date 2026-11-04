@@ -1,6 +1,6 @@
 ---
 name: review-poller
-description: "Install, update, or remove a macOS launchd poller that runs the autopraxis pr-review skill on every open GitHub PR where the user is in the assignee field, once per head SHA. Triggers: install review poller, set up PR review agent, auto-review assigned PRs, stop review poller, uninstall review poller, review poller broken."
+description: "Install, update, or remove a macOS launchd poller that runs the autopraxis pr-review skill on every open GitHub PR where the user is in the assignee field, once per head SHA. Triggers: install review poller, update review poller, set up PR review agent, auto-review assigned PRs, stop review poller, uninstall review poller, review poller broken."
 ---
 
 # Review Poller
@@ -9,7 +9,7 @@ description: "Install, update, or remove a macOS launchd poller that runs the au
 
 Install only on macOS. When the user asks you to install the poller, do these steps:
 
-- **Clone.** `git clone https://github.com/Zhachory1/review-poller ~/.local/share/review-poller`, or `git -C ~/.local/share/review-poller pull` if it is already there. launchd runs the script from this path, so do not move it.
+- **Clone.** Run `git clone https://github.com/Zhachory1/review-poller ~/.local/share/review-poller`, then check out the newest release tag: `git -C ~/.local/share/review-poller checkout "$(git -C ~/.local/share/review-poller tag --sort=-v:refname | head -1)"`. If the folder already exists, follow Update instead. launchd runs the script from this path, so do not move it.
 - **Check pr-review.** The poller tells the user's agent to use the `pr-review` skill from [autopraxis](https://github.com/Zhachory1/autopraxis). If that agent does not have it, install it with the `npx @zhachory1/autopraxis@latest install --target <target>` command from autopraxis `INSTALL.md` that matches the agent.
 - **Check auth.** Confirm `gh auth status` succeeds and `jq` is installed. Reviews post as this GitHub account.
 - **Agent command.** Ask the user for their agent command. It must run non-interactively, take the prompt as its last argument, and have permission to run `gh`, for example `claude -p --permission-mode acceptEdits --allowedTools "Bash(gh:*)"`. Use exactly what the user gives you; do not guess.
@@ -53,6 +53,17 @@ A launchd job (`com.autopraxis.pr-review-poller`) runs on this Mac. It runs the 
 - **Re-review.** The poller never reviews a SHA again once the user has a review on it in GitHub. To review it again, run `pr-review` by hand or push a new commit.
 
 launchd does not start a second run of a job while the first is still running, so the poller needs no lock. The first pass reviews every assigned PR, so tell the user how many are open before you load the plist.
+
+## Update
+
+Releases are git tags (`v0.1.0`, `v0.2.0`, ...). Install only tagged releases, never `main`. When the user asks you to update the poller, do these steps:
+
+- **Find versions.** Run `git -C ~/.local/share/review-poller fetch --tags`. The current version is `git -C ~/.local/share/review-poller describe --tags`. The newest is `git -C ~/.local/share/review-poller tag --sort=-v:refname | head -1`. If they match, tell the user they are up to date and stop.
+- **Show changes.** Show the user the newest tag's message (`git -C ~/.local/share/review-poller tag -l --format='%(contents)' <new>`) and the files that changed (`git -C ~/.local/share/review-poller diff --stat <current> <new>`). Ask before you continue.
+- **Check out.** Run `git -C ~/.local/share/review-poller checkout <new>`. If git refuses because of local changes, show them to the user and stop. Do not discard them.
+- **Apply.** If only `review-poller.sh` changed, you are done: launchd reads the script fresh on each run. If `SKILL.md` changed, read it again and redo **Write plist**, **Load**, and **Tell the agent** from Install. Keep the user's agent command, `PATH`, and interval from the current plist; ask only about new settings.
+- **Check pr-review.** If the tag message says it needs a newer autopraxis, reinstall the `pr-review` skill with the matching `npx @zhachory1/autopraxis@latest install --target <target> --force` command.
+- **Verify.** Check `~/Library/Logs/pr-review-poller.log` after the next run. To roll back, check out the previous tag and redo **Apply**.
 
 ## Uninstall
 
