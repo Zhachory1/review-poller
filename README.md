@@ -1,5 +1,8 @@
 # review-poller
 
+> **Moved:** this poller now lives in [Zhachory1/pr-pollers](https://github.com/Zhachory1/pr-pollers) with the review, maintain, and build pollers together. New installs should use that repo; its install steps replace this one. This repo stays working for existing installs.
+
+
 A macOS launchd job that runs the [autopraxis](https://github.com/Zhachory1/autopraxis) `pr-review` skill on every open GitHub PR assigned to you. It reviews each PR once per head SHA, and reviews it again after a new push.
 
 ## Install
